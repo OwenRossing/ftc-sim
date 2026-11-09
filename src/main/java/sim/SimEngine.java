@@ -186,7 +186,8 @@ public final class SimEngine {
 
     // when an OpMode ends the SDK cuts the motors and the servos go limp
     private void disableOutputs() {
-        for (SimMotor m : world.motors()) m.power = 0;
+        for (SimMotor m : world.motors()) m.cut();
+        for (SimCRServo s : world.crServos()) s.power = 0;
         for (SimServo s : world.servos()) s.commanded = Double.NaN;
     }
 
@@ -366,6 +367,11 @@ public final class SimEngine {
         j.key("motors").begin();
         for (SimMotor m : world.motors()) {
             j.key(m.name).begin().field("power", m.power).field("rpm", m.mechanismRpm).end();
+        }
+        j.end();
+        j.key("crservos").begin();
+        for (SimCRServo s : world.crServos()) {
+            j.key(s.name).begin().field("power", s.mechanismPower()).end();
         }
         j.end();
         List<String> stats = new ArrayList<>();

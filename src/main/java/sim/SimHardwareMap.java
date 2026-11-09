@@ -29,6 +29,7 @@ public final class SimHardwareMap extends HardwareMap {
             for (Map.Entry<String, SimRobot.Kind> e : world.robot.config().entrySet()) {
                 if (e.getValue() == SimRobot.Kind.MOTOR) dcMotor.put(e.getKey(), world.motor(e.getKey()).device);
                 if (e.getValue() == SimRobot.Kind.SERVO) servo.put(e.getKey(), world.servo(e.getKey()).device);
+                if (e.getValue() == SimRobot.Kind.CRSERVO) crservo.put(e.getKey(), world.crServo(e.getKey()).device);
             }
         }
     }
@@ -54,7 +55,7 @@ public final class SimHardwareMap extends HardwareMap {
     @Override
     public HardwareDevice get(String deviceName) {
         SimRobot.Kind kind = world.robot.config().get(deviceName.trim());
-        Class<?> type = kind == SimRobot.Kind.SERVO ? Servo.class : kind == null ? DcMotor.class : kind.type;
+        Class<?> type = kind == SimRobot.Kind.SERVO ? Servo.class : kind == SimRobot.Kind.MOTOR || kind == null ? DcMotor.class : kind.type;
         return (HardwareDevice) get(type, deviceName);
     }
 

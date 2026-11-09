@@ -26,7 +26,8 @@ public abstract class SimRobot {
 
     /** What a device is, like the type you pick on the Driver Hub's configure screen */
     public enum Kind {
-        MOTOR(DcMotorEx.class), SERVO(Servo.class), OTOS(SparkFunOTOS.class),
+        MOTOR(DcMotorEx.class), SERVO(Servo.class), CRSERVO(com.qualcomm.robotcore.hardware.CRServo.class),
+        OTOS(SparkFunOTOS.class),
         ANALOG(AnalogInput.class), LIMELIGHT(Limelight3A.class);
 
         final Class<?> type;
@@ -57,6 +58,12 @@ public abstract class SimRobot {
     protected double tractionMu = 0.7; // mecanum on foam tile, wheels slip past this
     protected double rollingResist = 0.05; // fraction of the weight lost to rollers and carpet
     protected double strafeEfficiency = 0.8; // rollers waste some going sideways
+    /**
+     * Tank (skid steer) instead of mecanum: the wheels grip sideways, so it can't strafe. wheels() then lists
+     * the left motor in both left slots and the right one in both right slots, and each slot gets half of
+     * motorStallNm (set it to half the real motor's)
+     */
+    protected boolean tankDrive = false;
 
     // where it starts on the field, Pedro's coordinates (inches, heading radians counterclockwise)
     protected double startX = 24;
@@ -123,6 +130,11 @@ public abstract class SimRobot {
         return 537.7; // 312 rpm 5203
     }
 
+    /** Output shaft rpm with no load at 12 V, what RUN_USING_ENCODER counts as full speed */
+    public double freeRpm(String motor) {
+        return 312;
+    }
+
     /** Servo travel speed, position units per second (1.0 = full range in a second) */
     public double servoRate(String servo) {
         return 2.0;
@@ -185,6 +197,10 @@ public abstract class SimRobot {
 
     protected final SimServo servo(String name) {
         return world.servo(name);
+    }
+
+    protected final SimCRServo crServo(String name) {
+        return world.crServo(name);
     }
 
     /** A first order lag: moves value toward target with time constant tau seconds */

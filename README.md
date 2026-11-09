@@ -41,8 +41,11 @@ It needs the Android SDK (it reads `local.properties`, which Android Studio writ
 A robot is a `SimRobot` subclass: its hardware config, drivetrain numbers, collision outline, and a `step()` that
 makes its mechanisms do things (spin a flywheel, pick up and shoot balls). Plus a 3D model in `web/robots/`.
 
-- `StarterRobot` is built in: mecanum drive, `intake`, `shooter`, `gate`. The starter repo's `START_HERE.md`
-  describes it for students.
+- `StarterRobot` is built in: the goBILDA FTC StarterBot (3200-2627-0003) that the FTC Starter Kit builds, with
+  goBILDA's config names (`left_drive`, `right_drive`, `intake`, `launcher`, and the CR servos `windmill`,
+  `left_intake_servo`, `right_intake_servo`). goBILDA's own example TeleOp and Auto (MIT licensed) run on it
+  unchanged and are the answer key in `example/TeamCode`. Its model is simple shapes for now; the STEP can replace
+  them once it's converted (`cad/README.md`, needs an x64 PC).
 - A team's own robot lives in the team repo, so its code and CAD stay there: the class in `sim-robot/java/`
   (it can read the team's constants), the model in `sim-web/robots/`, and `robot=<full class name>` in
   `sim.properties`. Files in `sim-web/` win over the sim's own `web/`.
@@ -52,8 +55,7 @@ motor's rpm). Parts are boxes and cylinders, or a `.glb` file from the CAD (`cad
 
 ## Working on the sim itself
 
-On its own (not inside a team repo) it compiles `example/TeamCode` instead, which has an answer-key TeleOp for
-the starter bot.
+On its own (not inside a team repo) it compiles `example/TeamCode` instead: goBILDA's StarterBot TeleOp and Auto.
 
 ```
 .\gradlew run
@@ -66,7 +68,8 @@ its message. They only run on their own, not inside a team repo.
 ## How it works
 
 - `build.gradle` compiles the team's `TeamCode/src/main/java` as Java 8 against the SDK jars, then the sim on top.
-- `SimHardwareMap` hands out fake motors, servos, the OTOS, analog inputs, the Limelight and the battery.
+- `SimHardwareMap` hands out fake motors, servos, CR servos, the OTOS, analog inputs, the Limelight and the
+  battery. Motors do RUN_USING_ENCODER (`setVelocity`) and RUN_TO_POSITION like the hub does.
 - `SimOpModeRunner` drives INIT/START/STOP the same way the Robot Controller app does.
 - `SimPhysics` is the shared physics: per-wheel mecanum forces with a motor curve and traction limit, the
   battery, the balls a robot holds, and what a Limelight sees. `SimCollisions` is the ode4j world: walls,

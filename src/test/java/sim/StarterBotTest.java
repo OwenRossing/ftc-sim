@@ -8,93 +8,123 @@ import org.firstinspires.ftc.teamcode.MistakeOpModes;
 import org.junit.jupiter.api.Test;
 
 /**
- * The starter bot, driven by the answer key the way a student would, plus the mistakes students make.
- * Real time: each test takes a few seconds.
+ * The goBILDA StarterBot, driven by goBILDA's own example TeleOp and Auto (unchanged), plus the mistakes
+ * students make. Real time: each test takes a few seconds.
  */
 class StarterBotTest {
 
-    private static final String ANSWER_KEY = "Starter Bot (answer key)";
+    private static final String TELEOP = "BioBuzz StarterBot Teleop";
+    private static final String AUTO = "StarterBotAuto";
 
     @Test
-    void answerKeyIsListed() {
+    void goBildasOpModesAreListed() {
         try (SimHarness sim = new SimHarness()) {
-            assertTrue(sim.engine.opModes().containsKey(ANSWER_KEY), "OpModes: " + sim.engine.opModes());
+            assertTrue(sim.engine.opModes().containsKey(TELEOP), "OpModes: " + sim.engine.opModes());
+            assertTrue(sim.engine.opModes().containsKey(AUTO), "OpModes: " + sim.engine.opModes());
         }
     }
 
     @Test
     void drivesStraightForward() throws Exception {
         try (SimHarness sim = new SimHarness()) {
-            sim.physics.placeRobot(15, 30, 0); // open floor all the way to x 90 (the start faces the Hives)
-            sim.init(ANSWER_KEY).start();
+            sim.physics.placeRobot(15, 30, 0); // open floor all the way to x 90
+            sim.init(TELEOP).start();
             double startX = sim.physics.x;
             sim.hold("ly", -1.0);
             SimHarness.sleep(1000);
             sim.release("ly");
             double moved = sim.physics.x - startX;
-            assertTrue(moved > 40, "only went " + moved + " in");
-            assertTrue(Math.abs(sim.physics.y - 30) < 3, "drifted sideways to y " + sim.physics.y);
+            assertTrue(moved > 30, "only went " + moved + " in");
+            assertTrue(Math.abs(sim.physics.y - 30) < 2, "drifted sideways to y " + sim.physics.y);
             assertTrue(Math.abs(Math.toDegrees(sim.physics.heading())) < 5, "turned to " + Math.toDegrees(sim.physics.heading()));
             assertTrue(sim.world.warnings().isEmpty(), "warnings: " + sim.world.warnings());
         }
     }
 
     @Test
-    void strafesAndTurns() throws Exception {
+    void turnsButCantStrafe() throws Exception {
         try (SimHarness sim = new SimHarness()) {
-            sim.init(ANSWER_KEY).start();
-            double startY = sim.physics.y;
-            sim.hold("lx", -1.0); // left
-            SimHarness.sleep(800);
+            sim.physics.placeRobot(40, 30, 0);
+            sim.init(TELEOP).start();
+            sim.hold("lx", -1.0); // a tank drive ignores this
+            SimHarness.sleep(600);
             sim.release("lx");
-            assertTrue(sim.physics.y - startY > 12, "strafed only to y " + sim.physics.y);
+            assertTrue(Math.abs(sim.physics.y - 30) < 1, "it strafed to y " + sim.physics.y);
             sim.hold("rx", 1.0); // turn right = clockwise = heading goes negative
-            SimHarness.sleep(500);
+            SimHarness.sleep(600);
             sim.release("rx");
             assertTrue(Math.toDegrees(sim.physics.heading()) < -30, "heading " + Math.toDegrees(sim.physics.heading()));
         }
     }
 
     @Test
-    void withoutReversingTheLeftSideItSpins() throws Exception {
+    void withoutReversingTheRightSideItSpins() throws Exception {
         try (SimHarness sim = new SimHarness()) {
+            sim.physics.placeRobot(40, 30, 0);
             String name = sim.engine.addOpMode(MistakeOpModes.NoReverse.class);
             sim.init(name).start();
             double startX = sim.physics.x;
             sim.hold("ly", -1.0);
             SimHarness.sleep(800);
             assertTrue(Math.abs(sim.physics.x - startX) < 4, "it drove " + (sim.physics.x - startX) + " in");
-            assertTrue(Math.abs(Math.toDegrees(sim.physics.heading())) > 45, "it only turned "
+            assertTrue(Math.abs(Math.toDegrees(sim.physics.heading())) > 30, "it only turned "
                     + Math.toDegrees(sim.physics.heading()));
         }
     }
 
     @Test
-    void intakePicksUpABallAndTheShooterFiresAll() throws Exception {
+    void intakesABallThenLaunchesAllFour() throws Exception {
         try (SimHarness sim = new SimHarness()) {
+            sim.physics.placeRobot(40, 30, 0);
             sim.physics.emptyRobot();
-            sim.physics.spawnBall(SimCollisions.POLLEN, sim.physics.x + 12, sim.physics.y, 1.4); // touching the roller
-            sim.init(ANSWER_KEY).start();
+            sim.physics.spawnBall(SimCollisions.POLLEN, sim.physics.x + 12, sim.physics.y, 1.4); // touching the intake
+            sim.init(TELEOP).start();
             sim.hold("rt", 1.0);
             assertTrue(sim.waitUntil(() -> sim.physics.balls == 1, 2), "never picked it up");
             sim.release("rt");
 
             sim.physics.loadPreloads(); // 4 to shoot
-            sim.hold("lt", 1.0);
-            SimHarness.sleep(1500); // spin up
-            sim.hold("a", true);
-            assertTrue(sim.waitUntil(() -> sim.physics.balls == 0, 3), "still holding " + sim.physics.balls);
+            sim.hold("rb", true); // spins up, then the windmill feeds once it's over 1200 ticks/s
+            assertTrue(sim.waitUntil(() -> sim.physics.balls == 0, 6), "still holding " + sim.physics.balls);
             assertEquals(4, sim.physics.shotsLaunched);
             assertTrue(sim.world.warnings().isEmpty(), "warnings: " + sim.world.warnings());
         }
     }
 
     @Test
-    void shootingWithoutSpinningUpWarns() throws Exception {
+    void launcherHoldsGoBildasVelocity() throws Exception {
+        try (SimHarness sim = new SimHarness()) {
+            sim.init(TELEOP).start();
+            sim.physics.emptyRobot(); // so nothing gets fed and slows it down
+            sim.hold("rb", true);
+            SimHarness.sleep(2000);
+            double ticksPerSec = sim.world.motorState("launcher").mechanismRpm / 60 * 28;
+            assertTrue(Math.abs(ticksPerSec - 1250) < 60, "launcher at " + ticksPerSec + " ticks/s");
+        }
+    }
+
+    @Test
+    void goBildasAutoScoresThenBacksUp() throws Exception {
+        try (SimHarness sim = new SimHarness()) {
+            int before = sim.physics.collisions.redHive.inCell;
+            sim.init(AUTO).start();
+            assertTrue(sim.waitUntil(() -> sim.physics.balls == 0, 8), "still holding " + sim.physics.balls);
+            assertTrue(sim.waitUntil(() -> sim.physics.collisions.redHive.inCell >= before + 2, 4),
+                    "only " + (sim.physics.collisions.redHive.inCell - before) + " landed in the cell");
+            // at 10 s it drives back 120 mm with RUN_TO_POSITION, then holds there 2 s
+            double x = sim.physics.x;
+            assertTrue(sim.waitUntil(() -> sim.telemetryLines().contains("Auto Complete!"), 14),
+                    "telemetry: " + sim.telemetryLines());
+            assertTrue(Math.abs(x - sim.physics.x - 120 / 25.4) < 1.5, "backed up " + (x - sim.physics.x) + " in");
+        }
+    }
+
+    @Test
+    void launchingWithoutSpinningUpWarns() throws Exception {
         try (SimHarness sim = new SimHarness()) {
             String name = sim.engine.addOpMode(MistakeOpModes.NoSpinUp.class);
             sim.init(name).start();
-            assertTrue(sim.waitForWarning("before it was spinning", 2), "warnings: " + sim.world.warnings());
+            assertTrue(sim.waitForWarning("before it was up to speed", 2), "warnings: " + sim.world.warnings());
         }
     }
 

@@ -294,6 +294,11 @@ function updateRobot(dt) {
       // slowed way down so you can see it turn instead of a strobe
       if (m) part.spin += (m.rpm * (d.scale ?? 1)) / 60 * 2 * Math.PI * dt * 0.08;
       angle = part.spin;
+    } else if (d.type === 'crspin') {
+      // a continuous servo: about 1 turn a second at full power (a 2000 series in speed mode is ~1.5)
+      const s = state.crservos && state.crservos[d.servo];
+      if (s) part.spin += s.power * (d.scale ?? 1) * 2 * Math.PI * dt;
+      angle = part.spin;
     } else if (d.type === 'turret') {
       angle = ((d.angleAtForward ?? 0) + (state.turretDeg - (d.forwardDeg ?? 0)) * (d.clockwisePositive ? -1 : 1)) * DEG;
     }

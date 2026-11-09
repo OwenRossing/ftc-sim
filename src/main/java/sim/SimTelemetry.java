@@ -33,6 +33,7 @@ final class SimTelemetry {
                 case "clearAll":
                     synchronized (pending) {
                         pending.clear();
+                        dirty = true;
                     }
                     return null;
                 case "log":
@@ -77,6 +78,7 @@ final class SimTelemetry {
     private void add(String line) {
         synchronized (pending) {
             pending.add(line);
+            dirty = true;
         }
     }
 
@@ -87,11 +89,17 @@ final class SimTelemetry {
         return updates;
     }
 
+    private boolean dirty = false;
+
     private void publish() {
         updates++;
         synchronized (pending) {
+            // like the real one: an update with nothing new since the last (the SDK's own one, right after the
+            // OpMode called update() itself) leaves the screen alone
+            if (!dirty) return;
             shown = new ArrayList<>(pending);
             pending.clear();
+            dirty = false;
         }
     }
 

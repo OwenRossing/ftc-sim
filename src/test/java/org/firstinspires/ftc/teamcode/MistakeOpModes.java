@@ -13,15 +13,14 @@ public final class MistakeOpModes {
 
     private MistakeOpModes() {}
 
-    /** Drives forward on every motor without reversing the mirrored left side: it spins instead */
+    /** Drives forward on both sides without reversing the mirrored right side: it spins instead */
     @TeleOp(name = "Mistake: no reverse", group = "test")
     public static class NoReverse extends OpMode {
         private DcMotor[] wheels;
 
         @Override
         public void init() {
-            wheels = new DcMotor[]{hardwareMap.get(DcMotor.class, "frontLeft"), hardwareMap.get(DcMotor.class, "frontRight"),
-                    hardwareMap.get(DcMotor.class, "backLeft"), hardwareMap.get(DcMotor.class, "backRight")};
+            wheels = new DcMotor[]{hardwareMap.get(DcMotor.class, "left_drive"), hardwareMap.get(DcMotor.class, "right_drive")};
         }
 
         @Override
@@ -95,7 +94,7 @@ public final class MistakeOpModes {
         public void loop() {}
     }
 
-    /** Feeds balls into the shooter without ever turning it on */
+    /** Feeds balls into the launcher without ever spinning it up */
     @TeleOp(name = "Mistake: no spin up", group = "test")
     public static class NoSpinUp extends OpMode {
         @Override
@@ -103,8 +102,10 @@ public final class MistakeOpModes {
 
         @Override
         public void loop() {
-            hardwareMap.get(com.qualcomm.robotcore.hardware.Servo.class, "gate").setPosition(1);
-            hardwareMap.get(DcMotor.class, "intake").setPower(1);
+            com.qualcomm.robotcore.hardware.CRServo windmill =
+                    hardwareMap.get(com.qualcomm.robotcore.hardware.CRServo.class, "windmill");
+            windmill.setDirection(DcMotor.Direction.REVERSE);
+            windmill.setPower(1);
         }
     }
 

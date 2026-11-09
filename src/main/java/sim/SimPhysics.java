@@ -171,8 +171,8 @@ public final class SimPhysics {
         for (int i = 0; i < 4; i++) {
             SimMotor wheel = wheels[i];
             double duty = wheel.mechanismPower();
-            double wheelSpeed = forwardMs + STRAFE_SIGN[i] * leftMs / robot.strafeEfficiency
-                    + TURN_SIGN[i] * spin * turnRadiusM;
+            double strafe = robot.tankDrive ? 0 : STRAFE_SIGN[i] * leftMs / robot.strafeEfficiency;
+            double wheelSpeed = forwardMs + strafe + TURN_SIGN[i] * spin * turnRadiusM;
             double speedRatio = wheelSpeed / wheelFreeSpeed;
             wheel.mechanismRpm = speedRatio * robot.motorFreeRpm;
             // a DC motor: full force at stall, none at free speed. At zero power BRAKE shorts the motor
@@ -181,7 +181,7 @@ public final class SimPhysics {
             double drive = duty * batteryVolts / 12.0 - speedRatio;
             double force = floating ? 0 : Range.clip(stallForce * drive, -maxTraction, maxTraction);
             forceForward += force;
-            forceLeft += STRAFE_SIGN[i] * force * robot.strafeEfficiency;
+            if (!robot.tankDrive) forceLeft += STRAFE_SIGN[i] * force * robot.strafeEfficiency;
             torque += TURN_SIGN[i] * force * turnRadiusM;
             wheel.currentAmps = floating ? 0 : robot.motorStallAmps * Math.abs(drive);
             amps += Math.abs(duty) * wheel.currentAmps;
@@ -191,8 +191,12 @@ public final class SimPhysics {
         // rollers and carpet: opposes motion, can stop the robot, can't push it backwards
         double rollForce = robot.rollingResist * robot.massKg * GRAVITY;
         forceForward = withDrag(forceForward, forwardMs, rollForce, robot.massKg / h);
-        forceLeft = withDrag(forceLeft, leftMs, rollForce, robot.massKg / h);
-        torque = withDrag(torque, spin, rollForce * turnRadiusM, yawInertia / h);
+        // tank wheels grip sideways like they grip forward. Turning makes them scrub sideways too, which
+        // costs a skid steer a lot of torque (more on 6 wheels with a dropped center than this, TUNE)
+        double sideGrip = robot.tankDrive ? robot.tractionMu * robot.massKg * GRAVITY : rollForce;
+        double turnDrag = robot.tankDrive ? rollForce * 3 : rollForce;
+        forceLeft = withDrag(forceLeft, leftMs, sideGrip, robot.massKg / h);
+        torque = withDrag(torque, spin, turnDrag * turnRadiusM, yawInertia / h);
 
         collisions.step(forceForward * cos - forceLeft * sin, forceForward * sin + forceLeft * cos, torque);
 

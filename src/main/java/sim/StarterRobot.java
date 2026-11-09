@@ -4,65 +4,83 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * The starter bot: what a rookie gets to learn on. A mecanum drivetrain, an intake roller across the
- * front, a flywheel shooter on top that fires forward, and a gate servo between them.
+ * The goBILDA FTC StarterBot for 2026-27 (3200-2627-0003), what the FTC Starter Kit builds. Its hardware
+ * config matches goBILDA's example code exactly, so their TeleOp and Auto run here unchanged:
  *
- * How the balls go: run the intake forward to pick balls up off the floor (it holds 4). Open the gate and
- * keep the intake running to feed them up into the shooter, one about every 0.3 s. Spin the shooter first
- * or they dribble out. Run the intake backward with the gate shut to spit the last one out the front.
+ *   left_drive, right_drive   drop-center 6 wheel tank drive, one 312 rpm motor per side, 96 mm wheels
+ *   intake                    the GripForce Gecko wheel intake across the front
+ *   left_intake_servo,        continuous servos on the front corners that pull pollen out of corners and
+ *   right_intake_servo        out of the bottom of a flower
+ *   launcher                  a high speed flywheel, run with setVelocity (encoder ticks per second)
+ *   windmill                  a continuous servo that feeds the hopper's balls into the launcher
  *
- * Like a real robot, the left drive motors are mounted mirrored, so with no setDirection the robot spins
- * instead of driving straight. See STARTER_BOT.md for the config.
+ * It holds 4 balls and lobs them up into a Hive cell, so it starts facing the red Hive's upper cell, where
+ * goBILDA's auto (shoot from the start, back up 12 cm) scores. Numbers from goBILDA's code: 96 mm wheels,
+ * 537.7 ticks/rev, 402 mm track.
+ * The rest is a guess from the kit's parts list (TUNE against the real robot).
  */
 public final class StarterRobot extends SimRobot {
 
-    public static final String FRONT_LEFT = "frontLeft";
-    public static final String FRONT_RIGHT = "frontRight";
-    public static final String BACK_LEFT = "backLeft";
-    public static final String BACK_RIGHT = "backRight";
+    public static final String LEFT_DRIVE = "left_drive";
+    public static final String RIGHT_DRIVE = "right_drive";
     public static final String INTAKE = "intake";
-    public static final String SHOOTER = "shooter";
-    public static final String GATE = "gate";
+    public static final String LEFT_INTAKE_SERVO = "left_intake_servo";
+    public static final String RIGHT_INTAKE_SERVO = "right_intake_servo";
+    public static final String LAUNCHER = "launcher";
+    public static final String WINDMILL = "windmill";
 
-    // intake: 312 rpm 5203 on the roller
+    // intake: 312 rpm 5203 on the Gecko wheels
     static final double INTAKE_RPM = 312;
     static final double INTAKE_TAU = 0.08;
     static final double MOUTH_X_MIN = 9; // where it grabs a ball, inches in front of center
     static final double MOUTH_X_MAX = 13.5;
-    static final double MOUTH_HALF_WIDTH = 6.5;
+    static final double MOUTH_HALF_WIDTH = 7;
     static final double MOUTH_Z_MAX = 5;
+    static final double CORNER_REACH_X = 15.5; // the corner servos reach a bit past the bumper into a flower
     static final double CAPTURE_COOLDOWN_SEC = 0.15;
 
-    // shooter: 6000 rpm 5203, it tops out around 4150 rpm under the flywheel's drag. 16:24 to 3 in wheels
-    static final double SHOOTER_TOP_RPM = 4150; // at full power on a 12.6V battery
-    static final double SHOOTER_TAU = 0.45;
-    static final double SHOT_RPM_LOSS = 350; // what one ball takes out of it
-    static final double SHOOTER_RATIO = 16.0 / 24.0;
-    static final double WHEEL_DIAMETER_M = 3 * 0.0254;
-    static final double BALL_EXIT_FRACTION = 0.65; // ball speed vs wheel rim speed. TUNE
-    static final double HOOD_DEG = 70; // fixed hood
-    static final double BARREL_FORWARD = 1.5; // where the ball leaves, robot frame
-    static final double BARREL_HEIGHT = 16;
-    static final double FEED_SECONDS_PER_BALL = 0.3;
-    static final double GATE_OPEN_ABOVE = 0.5; // servo position
+    // launcher: a bare 6000 rpm motor on the flywheel (28 ticks/rev, so 1250 ticks/s is ~2680 rpm). TUNE
+    static final double LAUNCHER_FREE_RPM = 6000;
+    static final double LAUNCHER_LOADED_RPM = 5400; // what it really reaches at full power with the wheel on
+    static final double LAUNCHER_TAU = 0.35;
+    static final double SHOT_RPM_LOSS = 400; // what one ball takes out of it
+    static final double FLYWHEEL_DIAMETER_M = 0.096;
+    // ball speed vs wheel rim speed. Set so goBILDA's 1250 ticks/s (about 6.2 m/s) scores from the start
+    // pose: from there 5.5-7 m/s lands in the upper cell. TUNE: film a real shot
+    static final double BALL_EXIT_FRACTION = 0.465;
+    static final double SHOT_ELEVATION_DEG = 80; // a steep lob, it has to drop into the cell from above. TUNE
+    static final double BARREL_FORWARD = 4; // where the ball leaves, robot frame
+    static final double BARREL_HEIGHT = 15;
+    static final double FEED_SECONDS_PER_BALL = 0.3; // the windmill at full power
+    static final double MIN_LAUNCH_SPEED = 3; // m/s, under this it just falls out
 
     double intakeRpm = 0;
-    double shooterRpm = 0;
+    double launcherRpm = 0;
     private double feedTimer = 0;
     private double outtakeTimer = 0;
     private double captureCooldown = 0;
 
     public StarterRobot() {
-        add(Kind.MOTOR, FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT, INTAKE, SHOOTER);
-        add(Kind.SERVO, GATE);
-        massKg = 12.7; // 28 lb
-        trackIn = 14.0;
-        wheelbaseIn = 11.0;
+        add(Kind.MOTOR, LEFT_DRIVE, RIGHT_DRIVE, INTAKE, LAUNCHER);
+        add(Kind.CRSERVO, LEFT_INTAKE_SERVO, RIGHT_INTAKE_SERVO, WINDMILL);
+        tankDrive = true;
+        massKg = 11.3; // 25 lb, TUNE: weigh it
+        wheelRadiusM = 0.048; // 96 mm
+        trackIn = 402 / 25.4;
+        wheelbaseIn = 10.5;
+        // one motor per side drives 3 wheels, and each side is listed twice in wheels(): half each
+        motorStallNm = 2.38 / 2;
+        motorStallAmps = 9.2 / 2;
+        // facing the red Hive's upper cell, about 30 in back from its frame: where a lob at goBILDA's launcher
+        // speed drops in (parked right against the frame, it can't get the arc over the cell's rim)
+        startX = 20;
+        startY = 54;
+        startHeading = 0;
     }
 
     @Override
     public String displayName() {
-        return "starter bot";
+        return "goBILDA StarterBot";
     }
 
     @Override
@@ -72,42 +90,37 @@ public final class StarterRobot extends SimRobot {
 
     @Override
     public String[] wheels() {
-        return new String[]{FRONT_LEFT, FRONT_RIGHT, BACK_LEFT, BACK_RIGHT};
+        return new String[]{LEFT_DRIVE, RIGHT_DRIVE, LEFT_DRIVE, RIGHT_DRIVE};
     }
 
     @Override
     public List<double[]> outline() {
         return Arrays.asList(
-                new double[]{0, 0, 3.5, 8.5, 8, 3.5}, // frame and bumpers, 17 x 16 in
-                new double[]{-3, 0, 11, 4, 4.5, 4}, // the shooter tower
-                new double[]{9.5, 0, 2.5, 1, 7, 2.5}); // the intake across the front
+                new double[]{0, 0, 3.5, 8.7, 8.7, 3.5}, // frame and bumpers, about 17.4 in square
+                new double[]{-4, 0, 10, 4.5, 6, 3.5}, // the launcher and hopper on top
+                new double[]{9.6, 0, 2.5, 0.9, 7.5, 2.5}); // the intake across the front
     }
 
     @Override
-    public int mount(String motor) {
-        // the left side is bolted in mirrored, like every real drivetrain
-        return motor.equals(FRONT_LEFT) || motor.equals(BACK_LEFT) ? -1 : 1;
+    public int mount(String device) {
+        // goBILDA's code reverses right_drive, right_intake_servo and the windmill, so that's how they're mounted
+        return device.equals(RIGHT_DRIVE) || device.equals(RIGHT_INTAKE_SERVO) || device.equals(WINDMILL) ? -1 : 1;
     }
 
     @Override
     public double ticksPerRev(String motor) {
-        return motor.equals(SHOOTER) ? 28 : 537.7;
+        return motor.equals(LAUNCHER) ? 28 : 537.7;
     }
 
     @Override
-    public double servoRate(String servo) {
-        return 4.0;
-    }
-
-    @Override
-    public double servoStart(String servo) {
-        return 0; // the gate sits shut
+    public double freeRpm(String motor) {
+        return motor.equals(LAUNCHER) ? LAUNCHER_FREE_RPM : 312;
     }
 
     @Override
     protected void reset() {
         intakeRpm = 0;
-        shooterRpm = 0;
+        launcherRpm = 0;
         feedTimer = 0;
         outtakeTimer = 0;
     }
@@ -120,27 +133,32 @@ public final class StarterRobot extends SimRobot {
         double intakePower = intake.mechanismPower();
         intakeRpm = approach(intakeRpm, INTAKE_RPM * intakePower * volts, INTAKE_TAU, dt);
         intake.mechanismRpm = intakeRpm;
-        intake.currentAmps = 6.0 * Math.abs(intakePower);
+        intake.currentAmps = 5.0 * Math.abs(intakePower);
 
-        SimMotor shooter = motor(SHOOTER);
-        double shooterPower = shooter.mechanismPower();
-        shooterRpm = approach(shooterRpm, SHOOTER_TOP_RPM * shooterPower * physics.batteryVolts() / 12.6, SHOOTER_TAU, dt);
-        shooter.mechanismRpm = shooterRpm;
-        shooter.currentAmps = 4.0 * Math.abs(shooterPower);
+        SimMotor launcher = motor(LAUNCHER);
+        double launcherPower = launcher.mechanismPower();
+        launcherRpm = approach(launcherRpm, LAUNCHER_LOADED_RPM * launcherPower * physics.batteryVolts() / 12.6,
+                LAUNCHER_TAU, dt);
+        launcher.mechanismRpm = launcherRpm;
+        launcher.currentAmps = 4.0 * Math.abs(launcherPower);
 
         double feed = intakeRpm / INTAKE_RPM; // -1 to 1
-        boolean gateOpen = servo(GATE).physical > GATE_OPEN_ABOVE;
+        double corners = (crServo(LEFT_INTAKE_SERVO).mechanismPower() + crServo(RIGHT_INTAKE_SERVO).mechanismPower()) / 2;
+        double windmill = crServo(WINDMILL).mechanismPower();
 
-        // pick up off the floor
+        // pick up off the floor, and with the corner servos pulling, out of the bottom of a flower
         captureCooldown = Math.max(0, captureCooldown - dt);
-        if (feed > 0.3 && captureCooldown == 0
-                && physics.capture(MOUTH_X_MIN, MOUTH_X_MAX, MOUTH_HALF_WIDTH, MOUTH_Z_MAX)) {
-            captureCooldown = CAPTURE_COOLDOWN_SEC;
+        if (feed > 0.3 && captureCooldown == 0) {
+            if (physics.capture(MOUTH_X_MIN, MOUTH_X_MAX, MOUTH_HALF_WIDTH, MOUTH_Z_MAX)) {
+                captureCooldown = CAPTURE_COOLDOWN_SEC;
+            } else if (corners > 0.3 && physics.takeFromFlower(MOUTH_X_MIN, CORNER_REACH_X, MOUTH_HALF_WIDTH)) {
+                captureCooldown = 0.5; // the stack has to drop down and the next one roll out
+            }
         }
 
-        // feed up through the open gate into the shooter
-        if (gateOpen && feed > 0.3 && physics.nextBall() >= 0) {
-            feedTimer += dt * feed;
+        // the windmill feeds the hopper into the launcher
+        if (windmill > 0.3 && physics.nextBall() >= 0) {
+            feedTimer += dt * windmill;
             if (feedTimer >= FEED_SECONDS_PER_BALL) {
                 feedTimer = 0;
                 shoot();
@@ -149,8 +167,8 @@ public final class StarterRobot extends SimRobot {
             feedTimer = 0;
         }
 
-        // spit one out the front
-        if (!gateOpen && feed < -0.3 && physics.nextBall() >= 0) {
+        // the intake run backward spits the last one out the front
+        if (feed < -0.3 && windmill <= 0.3 && physics.nextBall() >= 0) {
             outtakeTimer += dt;
             if (outtakeTimer >= 0.4) {
                 outtakeTimer = 0;
@@ -161,33 +179,40 @@ public final class StarterRobot extends SimRobot {
         }
     }
 
+    /** How fast a ball leaves at this launcher speed, m/s */
+    static double launchSpeed(double rpm) {
+        double rim = Math.abs(rpm) / 60 * Math.PI * FLYWHEEL_DIAMETER_M;
+        return rim * BALL_EXIT_FRACTION;
+    }
+
     private void shoot() {
-        double rim = Math.abs(shooterRpm) * SHOOTER_RATIO / 60 * Math.PI * WHEEL_DIAMETER_M;
-        double speed = Math.max(0.6, rim * BALL_EXIT_FRACTION); // a dead flywheel still lets it drop out
-        physics.launch(BARREL_FORWARD, 0, BARREL_HEIGHT, physics.heading(), Math.toRadians(HOOD_DEG), speed);
+        double speed = launchSpeed(launcherRpm);
+        physics.launch(BARREL_FORWARD, 0, BARREL_HEIGHT, physics.heading(), Math.toRadians(SHOT_ELEVATION_DEG),
+                Math.max(0.6, speed)); // a dead launcher still lets it drop out
         physics.shotsLaunched++;
-        shooterRpm = Math.copySign(Math.max(0, Math.abs(shooterRpm) - SHOT_RPM_LOSS), shooterRpm);
-        if (rim * BALL_EXIT_FRACTION < 3) { // warnings show once each
-            world.warn("A ball went into the shooter before it was spinning, so it just fell out. Spin the shooter up first");
+        launcherRpm = Math.copySign(Math.max(0, Math.abs(launcherRpm) - SHOT_RPM_LOSS), launcherRpm);
+        if (speed < MIN_LAUNCH_SPEED) { // warnings show once each
+            world.warn("A ball went into the launcher before it was up to speed, so it just fell out. "
+                    + "Spin the launcher up first (goBILDA's code waits for getVelocity() over 1200)");
         }
     }
 
     @Override
     protected double sagVolts() {
-        return 1.0 * Math.abs(motor(INTAKE).power) + 0.6 * Math.abs(motor(SHOOTER).power);
+        return 0.8 * Math.abs(motor(INTAKE).mechanismPower()) + 0.6 * Math.abs(motor(LAUNCHER).mechanismPower());
     }
 
     @Override
     protected void writeState(Json j) {
-        j.field("flywheelRpm", shooterRpm);
+        j.field("flywheelRpm", launcherRpm);
         j.field("intakeRpm", intakeRpm);
     }
 
     @Override
     protected List<String[]> stats() {
         return Arrays.asList(
-                new String[]{"Shooter", Math.round(shooterRpm) + " rpm"},
+                new String[]{"Launcher", Math.round(launcherRpm / 60 * 28) + " ticks/s"},
                 new String[]{"Intake", Math.round(intakeRpm) + " rpm"},
-                new String[]{"Gate", servo(GATE).physical > GATE_OPEN_ABOVE ? "open" : "shut"});
+                new String[]{"Windmill", String.format("%.1f", crServo(WINDMILL).mechanismPower())});
     }
 }

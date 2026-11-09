@@ -3,6 +3,7 @@ package sim;
 import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.AnalogInputController;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -31,6 +32,7 @@ public final class SimWorld {
 
     private final Map<String, SimMotor> motors = new LinkedHashMap<>();
     private final Map<String, SimServo> servos = new LinkedHashMap<>();
+    private final Map<String, SimCRServo> crServos = new LinkedHashMap<>();
     private final Map<String, AnalogInput> analogs = new LinkedHashMap<>();
     private final SimOtos otos = new SimOtos(this);
     private final VoltageSensor batterySensor;
@@ -46,8 +48,12 @@ public final class SimWorld {
         batterySensor = Fakes.proxy(VoltageSensor.class, "battery", (method, a) ->
                 method.equals("getVoltage") ? physics.batteryVolts : Fakes.NOT_HANDLED);
         robot.attach(this);
-        // the drivetrain exists whether or not the code asked for it yet
+        // the config's devices exist whether or not the code asked for them yet (the page draws them)
         for (String wheel : robot.wheels()) motor(wheel);
+        for (Map.Entry<String, SimRobot.Kind> e : robot.config().entrySet()) {
+            if (e.getValue() == SimRobot.Kind.MOTOR) motor(e.getKey());
+            if (e.getValue() == SimRobot.Kind.CRSERVO) crServo(e.getKey());
+        }
     }
 
     /**
@@ -105,6 +111,10 @@ public final class SimWorld {
             }
         }
         requested.add(type.getSimpleName() + " \"" + name + "\"");
+        // a CRServo is a DcMotorSimple too, so it has to come first
+        if (CRServo.class.isAssignableFrom(type) || robot.config().get(name) == SimRobot.Kind.CRSERVO) {
+            return crServo(name).device;
+        }
         if (DcMotorSimple.class.isAssignableFrom(type)) return motor(name).device;
         if (Servo.class.isAssignableFrom(type)) return servo(name).device;
         if (SparkFunOTOS.class.isAssignableFrom(type)) return otos;
@@ -166,7 +176,15 @@ public final class SimWorld {
     }
 
     synchronized SimMotor motor(String name) {
-        return motors.computeIfAbsent(name, n -> new SimMotor(n, robot.ticksPerRev(n), robot.mount(n), this));
+        return motors.computeIfAbsent(name, n -> new SimMotor(n, robot.ticksPerRev(n), robot.mount(n), robot.freeRpm(n), this));
+    }
+
+    synchronized SimCRServo crServo(String name) {
+        return crServos.computeIfAbsent(name, n -> new SimCRServo(n, robot.mount(n), this));
+    }
+
+    synchronized List<SimCRServo> crServos() {
+        return new ArrayList<>(crServos.values());
     }
 
     synchronized SimServo servo(String name) {
@@ -197,6 +215,12 @@ public final class SimWorld {
     void onMotorWrite(SimMotor motor, double power) {
         if (phase == Phase.INIT && power != 0) {
             warn(motor.name + " got power " + String.format("%.2f", power) + " during INIT" + initNote());
+        }
+    }
+
+    void onCrServoWrite(SimCRServo servo, double power) {
+        if (phase == Phase.INIT) {
+            warn(servo.name + " got power " + String.format("%.2f", power) + " during INIT" + initNote());
         }
     }
 
@@ -267,6 +291,7 @@ public final class SimWorld {
         autonomous = isAutonomous;
         for (SimMotor m : motors.values()) m.reset();
         for (SimServo s : servos.values()) s.reset();
+        for (SimCRServo s : crServos.values()) s.reset();
         warnings.clear();
         requested.clear();
     }
