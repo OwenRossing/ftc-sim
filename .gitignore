@@ -1,0 +1,12 @@
+build/
+.gradle/
+.idea/
+*.iml
+local.properties
+__pycache__/
+
+# match logs the sim writes
+matchlogs/
+
+# invite codes and per-player logs for the sim website, never commit these
+site/

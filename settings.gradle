@@ -1,0 +1,3 @@
+// Its own build, separate from the robot app so it can never break the robot build.
+// Run from the repo root:  .\gradlew -p sim run
+rootProject.name = 'ftc-sim'

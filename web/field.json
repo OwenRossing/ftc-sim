@@ -1,0 +1,13 @@
+{
+  "_help": [
+    "The field model (AndyMark field STEP converted to GLB, meters, Y up, origin at field center).",
+    "scale 39.37 turns meters into the sim's inches.",
+    "rotationYDeg spins the field so it lines up with Pedro's coordinates (red arrow = +x,",
+    "green arrow = +y, at the field corner Pedro calls (0, 0)).",
+    "0 is verified against the Pedro visualizer (same layout as DECODE): red hives 12.5in left",
+    "of center, red side box on the left wall at y 97-120, blue mirrored on the right."
+  ],
+  "file": "field.glb",
+  "scale": 39.37,
+  "rotationYDeg": 0
+}

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FTC Sim</title>
+<style>
+  :root {
+    --bg: #14171c; --panel: rgba(20, 24, 30, 0.92); --line: #2c333d; --text: #e6e9ee;
+    --muted: #8c96a3; --accent: #f2b632; --ok: #4cc28a; --bad: #ff6b6b; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 13px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; overflow: hidden; }
+  #view { position: fixed; inset: 0; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px; backdrop-filter: blur(6px); }
+  #ds { top: 12px; left: 12px; width: 300px; max-height: calc(100% - 24px); overflow: auto; }
+  #tele { top: 12px; right: 12px; width: 330px; max-height: calc(100% - 24px); overflow: auto; }
+  h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  select, button { font: inherit; color: var(--text); background: #222832; border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 10px; }
+  select { width: 100%; margin-bottom: 8px; }
+  .row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .row button { flex: 1; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .4; }
+  button.go { background: #2b4a37; }
+  button.stop { background: #4a2b2b; }
+  #phase { font-weight: 600; }
+  .phase-RUNNING { color: var(--ok); } .phase-INIT { color: var(--accent); } .phase-STOPPED, .phase-IDLE { color: var(--muted); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 8px 0; font-variant-numeric: tabular-nums; }
+  .kv span:nth-child(odd) { color: var(--muted); }
+  #telemetry { font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+  #warnings div { color: var(--warn); margin-top: 4px; }
+  #error { color: var(--bad); font: 11px/1.35 ui-monospace, Consolas, monospace; white-space: pre-wrap;
+    max-height: 200px; overflow: auto; margin-top: 6px; }
+  #help { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #help b { color: var(--text); font-weight: 600; }
+  label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .viewLabel { margin-bottom: 4px; }
+  #settings { left: 50%; top: 24px; transform: translateX(-50%); width: min(460px, calc(100vw - 32px));
+              max-height: calc(100vh - 48px); overflow-y: auto; z-index: 20; padding: 12px 14px; box-sizing: border-box; }
+  #settings[hidden] { display: none; }
+  #settings h3 { margin: 12px 0 6px; font-size: 13px; }
+  .settingsHead { display: flex; align-items: center; gap: 8px; }
+  .settingsHead span { flex: 1; opacity: 0.7; font-size: 12px; }
+  .settingRow { display: grid; grid-template-columns: 1fr 120px 44px auto; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .settingRow label { font-size: 13px; }
+  .settingRow.changed label { font-weight: 600; }
+  .settingRow input[type=checkbox] { justify-self: start; grid-column: 2 / 4; }
+  .settingRow input[type=range] { width: 100%; }
+  .settingValue { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+  .settingHelp { grid-column: 1 / -1; opacity: 0.65; font-size: 11px; margin: -2px 0 2px; }
+  #settingsChanges { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; margin-bottom: 6px; }
+  @media (max-width: 480px) {
+    .settingRow { grid-template-columns: 1fr 44px auto; }
+    .settingRow label { grid-column: 1 / -1; }
+    .settingRow input[type=range] { grid-column: 1 / 2; }
+  }
+  @media (max-width: 760px) {
+    #ds { width: auto; right: 12px; } #tele { top: auto; bottom: 12px; left: 12px; width: auto; max-height: 40%; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="view"></div>
+
+<div id="ds" class="panel">
+  <h2>Driver Station <span id="robotName" style="text-transform:none;letter-spacing:0"></span></h2>
+  <select id="opmode"></select>
+  <div class="row">
+    <button id="init">INIT</button>
+    <button id="start" class="go">START</button>
+    <button id="stop" class="stop">STOP</button>
+  </div>
+  <div>Phase: <span id="phase">-</span></div>
+  <div class="kv">
+    <span>Controller</span><span id="pad">none, press a button</span>
+    <span>Render</span><span id="fps">-</span>
+    <span>Battery</span><span id="battery">-</span>
+    <span>Balls held</span><span id="balls">-</span>
+    <span>Shots</span><span id="shots">-</span>
+    <span>Red hive</span><span id="redScore">-</span>
+    <span>Blue hive</span><span id="blueScore">-</span>
+    <span>Pose</span><span id="pose">-</span>
+  </div>
+  <div class="kv" id="stats"></div>
+  <div class="row">
+    <button id="reset">Reset field</button>
+    <label><input type="checkbox" id="follow" checked> Follow</label>
+  </div>
+  <div class="row">
+    <button id="settingsOpen" type="button">Settings</button>
+    <button id="soundOn" type="button">Sound off</button>
+    <input id="soundVolume" type="range" min="0" max="1" step="0.05" aria-label="Sound volume" style="width:90px">
+  </div>
+  <div class="row">
+    <label><input type="checkbox" id="soundMusical"> Musical sounds</label>
+  </div>
+  <div id="allianceBox" hidden>
+    <label for="alliance" class="viewLabel">Alliance</label>
+    <select id="alliance">
+      <option value="">Not picked (tracks any Hive)</option>
+      <option value="RED">Red</option>
+      <option value="BLUE">Blue</option>
+    </select>
+  </div>
+  <label for="cameraView" class="viewLabel">Camera (keys 1-7)</label>
+  <select id="cameraView">
+    <option value="free">1 Free orbit</option>
+    <option value="driverRed">2 Red driver</option>
+    <option value="driverBlue">3 Blue driver</option>
+    <option value="top">4 Top down</option>
+    <option value="audience">5 Audience</option>
+    <option value="chase">6 Chase</option>
+    <option value="limelight">7 Limelight</option>
+  </select>
+  <label for="detail" class="viewLabel">Detail</label>
+  <select id="detail">
+    <option value="high">High</option>
+    <option value="low">Low (slow laptops, phones)</option>
+  </select>
+  <div id="warnings"></div>
+  <div id="error"></div>
+  <div id="help">
+    A controller works like the real one. No controller? The keyboard is gamepad 1:
+    <b>WASD</b> left stick, <b>Q/E</b> right stick, <b>Shift</b> LT, <b>Space</b> RT, <b>G</b> A, <b>F</b> B,
+    <b>X</b> X, <b>R</b> RB, <b>arrows</b> dpad, <b>Enter</b> start. <b>M</b> sound, <b>1-7</b> camera.
+  </div>
+</div>
+
+<div id="settings" class="panel" role="dialog" aria-label="Settings" hidden>
+  <div class="settingsHead">
+    <b>Settings</b>
+    <span id="settingsCount"></span>
+    <button id="settingsResetAll" type="button">Reset all</button>
+    <button id="settingsClose" type="button">Close</button>
+  </div>
+  <div id="settingsBody">The sim isn't running.</div>
+  <h3>For your code</h3>
+  <p class="settingHelp">These only change this sim. To put them on the robot, copy what's different into your code.</p>
+  <textarea id="settingsChanges" rows="3" readonly></textarea>
+  <button id="settingsCopy" type="button">Copy</button>
+</div>
+
+<div id="tele" class="panel">
+  <h2>Telemetry</h2>
+  <div id="telemetry">-</div>
+</div>
+
+<script type="module" src="sim.js"></script>
+</body>
+</html>

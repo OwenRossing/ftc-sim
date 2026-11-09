@@ -1,0 +1,179 @@
+// FTC sim: compiles a team's real TeamCode against the real FTC SDK / SolversLib / Pedro jars and runs it
+// against fake hardware with a 3D field in the browser. See README.md.
+//
+// It lives in a team repo as the sim/ folder (a git submodule) and compiles ../TeamCode. On its own, it
+// compiles example/TeamCode instead, so it can be worked on and tested without a team repo.
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+    google()
+    maven { url = 'https://repo.dairy.foundation/releases/' }
+}
+
+// ---- the team repo this sim is in ----
+def standalone = !file('../TeamCode/src/main/java').isDirectory()
+def hostDir = standalone ? file('example') : file('..')
+def simProps = new Properties()
+def simPropsFile = new File(hostDir, 'sim.properties')
+if (simPropsFile.exists()) simPropsFile.withInputStream { simProps.load(it) }
+// robot=starter, or the full name of a SimRobot class in the team repo's sim-robot/java
+def robotName = simProps.getProperty('robot', 'starter').trim()
+def hostWeb = new File(hostDir, 'sim-web')
+def robotSources = new File(hostDir, 'sim-robot/java')
+// files in TeamCode the sim can't compile (they need libraries it doesn't load), comma separated
+def excludes = ['org/firstinspires/ftc/teamcode/pedro/Tuning.java', 'org/firstinspires/ftc/teamcode/pedro/procedures/**'] +
+        simProps.getProperty('exclude', '').split(',').collect { it.trim() }.findAll { !it.isEmpty() }
+
+// ---- android.jar gives us the android.* classes the SDK references (we shadow the few that get called) ----
+def localProps = new Properties()
+def localPropsFile = [new File(hostDir, 'local.properties'), file('local.properties')].find { it.exists() }
+if (localPropsFile != null) localPropsFile.withInputStream { localProps.load(it) }
+def sdkDir = localProps.getProperty('sdk.dir') ?: System.getenv('ANDROID_HOME') ?: System.getenv('ANDROID_SDK_ROOT')
+def androidJar = null
+if (sdkDir != null) {
+    // whichever platform Android Studio installed, newest first
+    def platforms = new File(sdkDir, 'platforms').listFiles()?.findAll { new File(it, 'android.jar').exists() } ?: []
+    def newest = platforms.max { (it.name.find(/\d+/) ?: '0').toInteger() }
+    if (newest != null) androidJar = new File(newest, 'android.jar')
+}
+if (androidJar == null) {
+    throw new GradleException("The sim can't find the Android SDK. Open the team repo in Android Studio once " +
+            "(that writes local.properties), or set ANDROID_HOME to the SDK folder.")
+}
+
+configurations {
+    // Android libraries ship as .aar, we pull classes.jar out of each one
+    aar { transitive = false }
+    // android.jar's org.json is all stubs that throw, LLResult needs a real one ahead of it at runtime
+    realJson
+    // what the robot code compiles against: the SDK and the libraries teams use
+    sdk
+    implementation.extendsFrom sdk
+}
+
+def aarJarsDir = layout.buildDirectory.dir('aar-jars')
+
+tasks.register('extractAars') {
+    def aarFiles = configurations.aar
+    def outDir = aarJarsDir
+    inputs.files(aarFiles)
+    outputs.dir(outDir)
+    doLast {
+        def out = outDir.get().asFile
+        out.deleteDir()
+        out.mkdirs()
+        aarFiles.each { File aar ->
+            new java.util.zip.ZipFile(aar).withCloseable { zip ->
+                def entry = zip.getEntry('classes.jar')
+                if (entry != null) {
+                    new File(out, aar.name.replace('.aar', '.jar')).withOutputStream { os ->
+                        os << zip.getInputStream(entry)
+                    }
+                }
+            }
+        }
+    }
+}
+
+sourceSets {
+    // the team's robot code, compiled as-is
+    team {
+        java {
+            srcDir new File(hostDir, 'TeamCode/src/main/java')
+            excludes.each { exclude it }
+        }
+    }
+    main {
+        java {
+            // a team's own sim robot, if it has one
+            if (robotSources.isDirectory()) srcDir robotSources
+        }
+        runtimeClasspath = configurations.realJson + runtimeClasspath
+    }
+    test {
+        runtimeClasspath = configurations.realJson + runtimeClasspath
+    }
+}
+
+configurations {
+    teamImplementation.extendsFrom sdk
+}
+
+dependencies {
+    // the same versions the robot app uses
+    aar 'org.firstinspires.ftc:RobotCore:12.0.0@aar'
+    aar 'org.firstinspires.ftc:Hardware:12.0.0@aar'
+    aar 'org.firstinspires.ftc:FtcCommon:12.0.0@aar'
+    aar 'org.solverslib:core:0.3.6@aar'
+    aar 'com.pedropathing:revhub:3.0.1@aar'
+
+    sdk 'com.pedropathing:core:3.0.1'
+    sdk 'org.jetbrains.kotlin:kotlin-stdlib:2.3.21'
+    sdk 'org.ejml:ejml-simple:0.39'
+    sdk fileTree(aarJarsDir) { include '*.jar' }.builtBy('extractAars')
+    sdk files(androidJar)
+
+    implementation sourceSets.team.output
+    implementation 'org.ode4j:core:0.5.4' // physics: collisions, balls, the Hive hinges
+    realJson 'org.json:json:20240303'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// the robot runs Java 8, so the robot code compiles as Java 8 here too: what works in the sim works on the robot
+tasks.named('compileTeamJava', JavaCompile) {
+    options.release = 8
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:-options']
+}
+
+def simSystemProperties = [
+        'sim.robot'  : robotName,
+        'sim.hostWeb': hostWeb.absolutePath,
+]
+// host=localhost keeps the page to this computer. Left out, phones and laptops on the same network can open it too
+if (simProps.getProperty('host')) simSystemProperties['sim.host'] = simProps.getProperty('host').trim()
+
+application {
+    mainClass = 'sim.SimMain'
+}
+
+tasks.named('run', JavaExec) {
+    workingDir = projectDir
+    standardInput = System.in
+    systemProperties simSystemProperties
+}
+
+// .\gradlew -p sim test   only on its own (it tests the sim with example/TeamCode, not a team's code)
+tasks.named('test', Test) {
+    onlyIf('the sim tests run with the sim on its own, not inside a team repo') { standalone }
+    useJUnitPlatform()
+    workingDir = projectDir
+    systemProperties simSystemProperties
+    // they run in real time and mostly wait, so a JVM per class side by side is nearly free. Each gets its own
+    // so the robot code's static state can't leak between them. Half the CPU, they're timing sensitive
+    forkEvery = 1
+    maxParallelForks = Math.max(1, Math.min(9, (int) (Runtime.runtime.availableProcessors() / 2)))
+    testLogging {
+        showStandardStreams = true
+        events 'passed', 'failed', 'skipped'
+        exceptionFormat = 'full'
+    }
+}
+
+// .\gradlew -p sim site   the invite code website, see site.bat
+tasks.register('site', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'sim.SimGateway'
+    workingDir = projectDir
+    standardInput = System.in
+    systemProperties simSystemProperties
+}
