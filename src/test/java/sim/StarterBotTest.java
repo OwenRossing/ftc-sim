@@ -98,7 +98,7 @@ class StarterBotTest {
             sim.physics.emptyRobot(); // so nothing gets fed and slows it down
             sim.hold("rb", true);
             SimHarness.sleep(2000);
-            double ticksPerSec = sim.world.motorState("launcher").mechanismRpm / 60 * 28;
+            double ticksPerSec = sim.world.motorState("launcher").mechanismRpm / 60 * 537.7;
             assertTrue(Math.abs(ticksPerSec - 1250) < 60, "launcher at " + ticksPerSec + " ticks/s");
         }
     }

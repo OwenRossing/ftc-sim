@@ -7,17 +7,17 @@ import java.util.List;
  * The goBILDA FTC StarterBot for 2026-27 (3200-2627-0003), what the FTC Starter Kit builds. Its hardware
  * config matches goBILDA's example code exactly, so their TeleOp and Auto run here unchanged:
  *
- *   left_drive, right_drive   drop-center 6 wheel tank drive, one 312 rpm motor per side, 96 mm wheels
- *   intake                    the GripForce Gecko wheel intake across the front
- *   left_intake_servo,        continuous servos on the front corners that pull pollen out of corners and
- *   right_intake_servo        out of the bottom of a flower
- *   launcher                  a high speed flywheel, run with setVelocity (encoder ticks per second)
+ *   left_drive, right_drive   6 wheel tank drive, one 312 rpm motor per side belted to 96 mm wheels (omnis in front)
+ *   intake                    a 117 rpm motor on the 48 mm Gecko wheels across the front
+ *   left_intake_servo,        continuous 2000 series servos with flat 72 mm wheels on the front corners, they pull
+ *   right_intake_servo        pollen out of corners and out of the bottom of a flower
+ *   launcher                  a 312 rpm motor straight on a 96 mm wheel, run with setVelocity (ticks per second)
  *   windmill                  a continuous servo that feeds the hopper's balls into the launcher
  *
  * It holds 4 balls and lobs them up into a Hive cell, so it starts facing the red Hive's upper cell, where
- * goBILDA's auto (shoot from the start, back up 12 cm) scores. Numbers from goBILDA's code: 96 mm wheels,
- * 537.7 ticks/rev, 402 mm track.
- * The rest is a guess from the kit's parts list (TUNE against the real robot).
+ * goBILDA's auto (shoot from the start, back up 12 cm) scores. Sizes and parts from goBILDA's CAD
+ * (3200-2627-0003.step) and code (537.7 ticks/rev, 402 mm track). Speeds and the shot are guesses
+ * (TUNE against the real robot).
  */
 public final class StarterRobot extends SimRobot {
 
@@ -29,28 +29,29 @@ public final class StarterRobot extends SimRobot {
     public static final String LAUNCHER = "launcher";
     public static final String WINDMILL = "windmill";
 
-    // intake: 312 rpm 5203 on the Gecko wheels
-    static final double INTAKE_RPM = 312;
+    // intake: 117 rpm 5203 (50.9:1) driving the Gecko shaft
+    static final double INTAKE_RPM = 117;
     static final double INTAKE_TAU = 0.08;
-    static final double MOUTH_X_MIN = 9; // where it grabs a ball, inches in front of center
-    static final double MOUTH_X_MAX = 13.5;
-    static final double MOUTH_HALF_WIDTH = 7;
+    static final double MOUTH_X_MIN = 9; // where it grabs a ball, inches in front of center (the Gecko wheels are at 7.4)
+    static final double MOUTH_X_MAX = 13;
+    static final double MOUTH_HALF_WIDTH = 6.5;
     static final double MOUTH_Z_MAX = 5;
-    static final double CORNER_REACH_X = 15.5; // the corner servos reach a bit past the bumper into a flower
+    static final double CORNER_REACH_X = 14.5; // the corner wheels stick out to 10.2, a bit past that into a flower
     static final double CAPTURE_COOLDOWN_SEC = 0.15;
 
-    // launcher: a bare 6000 rpm motor on the flywheel (28 ticks/rev, so 1250 ticks/s is ~2680 rpm). TUNE
-    static final double LAUNCHER_FREE_RPM = 6000;
-    static final double LAUNCHER_LOADED_RPM = 5400; // what it really reaches at full power with the wheel on
-    static final double LAUNCHER_TAU = 0.35;
-    static final double SHOT_RPM_LOSS = 400; // what one ball takes out of it
-    static final double FLYWHEEL_DIAMETER_M = 0.096;
-    // ball speed vs wheel rim speed. Set so goBILDA's 1250 ticks/s (about 6.2 m/s) scores from the start
-    // pose: from there 5.5-7 m/s lands in the upper cell. TUNE: film a real shot
-    static final double BALL_EXIT_FRACTION = 0.465;
+    // launcher: a 312 rpm 5203 (19.2:1, 537.7 ticks/rev) straight on a 96 mm wheel, from the CAD. 1250 ticks/s is
+    // 139 rpm, a 0.7 m/s rim, which can't throw a ball into a Hive by itself, so the real robot must do something
+    // the CAD doesn't show. Until it's measured, the ball's speed scales with the encoder so goBILDA's 1250 ticks/s
+    // throws about 6.5 m/s, which scores from the start pose (6.25-6.75 m/s at 80 deg lands in the upper cell).
+    // TUNE: film a shot
+    static final double LAUNCHER_LOADED_RPM = 290; // at full power with the wheel on
+    static final double LAUNCHER_TICKS_PER_REV = 537.7;
+    static final double LAUNCHER_TAU = 0.25;
+    static final double SHOT_RPM_LOSS = 20; // what one ball takes out of it
+    static final double SPEED_AT_1250 = 6.5; // m/s
     static final double SHOT_ELEVATION_DEG = 80; // a steep lob, it has to drop into the cell from above. TUNE
-    static final double BARREL_FORWARD = 4; // where the ball leaves, robot frame
-    static final double BARREL_HEIGHT = 15;
+    static final double BARREL_FORWARD = -1.6; // the top of the launcher wheel, robot frame, from the CAD
+    static final double BARREL_HEIGHT = 10;
     static final double FEED_SECONDS_PER_BALL = 0.3; // the windmill at full power
     static final double MIN_LAUNCH_SPEED = 3; // m/s, under this it just falls out
 
@@ -64,16 +65,16 @@ public final class StarterRobot extends SimRobot {
         add(Kind.MOTOR, LEFT_DRIVE, RIGHT_DRIVE, INTAKE, LAUNCHER);
         add(Kind.CRSERVO, LEFT_INTAKE_SERVO, RIGHT_INTAKE_SERVO, WINDMILL);
         tankDrive = true;
-        massKg = 11.3; // 25 lb, TUNE: weigh it
+        massKg = 9.5; // 21 lb, TUNE: weigh it
         wheelRadiusM = 0.048; // 96 mm
         trackIn = 402 / 25.4;
-        wheelbaseIn = 10.5;
+        wheelbaseIn = 11.3; // front to back wheel, from the CAD
         // one motor per side drives 3 wheels, and each side is listed twice in wheels(): half each
         motorStallNm = 2.38 / 2;
         motorStallAmps = 9.2 / 2;
         // facing the red Hive's upper cell, about 30 in back from its frame: where a lob at goBILDA's launcher
         // speed drops in (parked right against the frame, it can't get the arc over the cell's rim)
-        startX = 20;
+        startX = 30;
         startY = 54;
         startHeading = 0;
     }
@@ -96,9 +97,10 @@ public final class StarterRobot extends SimRobot {
     @Override
     public List<double[]> outline() {
         return Arrays.asList(
-                new double[]{0, 0, 3.5, 8.7, 8.7, 3.5}, // frame and bumpers, about 17.4 in square
-                new double[]{-4, 0, 10, 4.5, 6, 3.5}, // the launcher and hopper on top
-                new double[]{9.6, 0, 2.5, 0.9, 7.5, 2.5}); // the intake across the front
+                // from the CAD: the frame runs 7.6 in back to 9.5 in front and 16.3 in wide
+                new double[]{0.95, 0, 4, 8.55, 8.15, 3.5},
+                new double[]{0, 0, 9.5, 4, 4, 2.5}, // the hopper and launcher on top, up to 12 in
+                new double[]{9.85, 0, 1.9, 0.35, 7.5, 1.4}); // the corner wheels, out to 10.2 in
     }
 
     @Override
@@ -109,12 +111,12 @@ public final class StarterRobot extends SimRobot {
 
     @Override
     public double ticksPerRev(String motor) {
-        return motor.equals(LAUNCHER) ? 28 : 537.7;
+        return motor.equals(INTAKE) ? 1425.1 : 537.7; // 117 rpm and 312 rpm 5203s
     }
 
     @Override
     public double freeRpm(String motor) {
-        return motor.equals(LAUNCHER) ? LAUNCHER_FREE_RPM : 312;
+        return motor.equals(INTAKE) ? 117 : 312;
     }
 
     @Override
@@ -179,10 +181,14 @@ public final class StarterRobot extends SimRobot {
         }
     }
 
-    /** How fast a ball leaves at this launcher speed, m/s */
+    /** The launcher's encoder speed the code sees, ticks per second */
+    static double ticksPerSec(double rpm) {
+        return Math.abs(rpm) / 60 * LAUNCHER_TICKS_PER_REV;
+    }
+
+    /** How fast a ball leaves at this launcher speed, m/s (see SPEED_AT_1250) */
     static double launchSpeed(double rpm) {
-        double rim = Math.abs(rpm) / 60 * Math.PI * FLYWHEEL_DIAMETER_M;
-        return rim * BALL_EXIT_FRACTION;
+        return SPEED_AT_1250 * ticksPerSec(rpm) / 1250;
     }
 
     private void shoot() {
@@ -204,14 +210,14 @@ public final class StarterRobot extends SimRobot {
 
     @Override
     protected void writeState(Json j) {
-        j.field("flywheelRpm", launcherRpm);
+        j.field("flywheelRpm", launcherRpm * 19.2); // the motor's own speed, for the sound
         j.field("intakeRpm", intakeRpm);
     }
 
     @Override
     protected List<String[]> stats() {
         return Arrays.asList(
-                new String[]{"Launcher", Math.round(launcherRpm / 60 * 28) + " ticks/s"},
+                new String[]{"Launcher", Math.round(ticksPerSec(launcherRpm)) + " ticks/s"},
                 new String[]{"Intake", Math.round(intakeRpm) + " rpm"},
                 new String[]{"Windmill", String.format("%.1f", crServo(WINDMILL).mechanismPower())});
     }

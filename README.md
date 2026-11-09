@@ -44,8 +44,8 @@ makes its mechanisms do things (spin a flywheel, pick up and shoot balls). Plus 
 - `StarterRobot` is built in: the goBILDA FTC StarterBot (3200-2627-0003) that the FTC Starter Kit builds, with
   goBILDA's config names (`left_drive`, `right_drive`, `intake`, `launcher`, and the CR servos `windmill`,
   `left_intake_servo`, `right_intake_servo`). goBILDA's own example TeleOp and Auto (MIT licensed) run on it
-  unchanged and are the answer key in `example/TeamCode`. Its model is simple shapes for now; the STEP can replace
-  them once it's converted (`cad/README.md`, needs an x64 PC).
+  unchanged and are the answer key in `example/TeamCode`. Its model is goBILDA's CAD, converted with
+  `cad/starterbot_export.py`, into `web/models/starterbot/`.
 - A team's own robot lives in the team repo, so its code and CAD stay there: the class in `sim-robot/java/`
   (it can read the team's constants), the model in `sim-web/robots/`, and `robot=<full class name>` in
   `sim.properties`. Files in `sim-web/` win over the sim's own `web/`.

@@ -28,6 +28,17 @@ cadenv\Scripts\python robot_mesh.py "Main Assembly.step" robot_tree.json robot_m
 cadenv\Scripts\python robot_export.py robot_tree.json robot_mesh.npz ..\web\models\robot --write
 ```
 
+The goBILDA StarterBot uses its own sorter, since its parts are named by goBILDA part number:
+
+```
+cadenv\Scripts\python robot_mesh.py 3200-2627-0003.step sb_tree.json sb_mesh.npz
+cadenv\Scripts\python starterbot_export.py sb_tree.json sb_mesh.npz ..\web\models\starterbot
+cadenv\Scripts\python starterbot_export.py sb_tree.json sb_mesh.npz ..\web\models\starterbot\low --low
+```
+
+On a Windows ARM laptop `cadquery-ocp` has no build: make the venv with an x64 Python (it runs emulated, and
+reading the 420 MB STEP takes about 4 minutes).
+
 `robot_mesh.py` caches every part's path, placement and round-hole axes (that's how the hinges in
 `sim/web/robot.json` were measured). `robot_export.py` sorts parts into moving groups by assembly
 path (`classify()`) and writes them in the robot frame. If the CAD changes, re-run both; hinges in

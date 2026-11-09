@@ -153,7 +153,8 @@ function placeholder(cfg) {
 }
 
 function loadGlb(cfg, holder) {
-  const file = LOW_DETAIL ? cfg.file.replace('robot/', 'robot/low/') : cfg.file;
+  // low detail models sit in a low/ folder next to the full ones
+  const file = LOW_DETAIL ? cfg.file.replace(/([^/]+)$/, 'low/$1') : cfg.file;
   new GLTFLoader().load(`models/${file}`, (gltf) => {
     const model = gltf.scene;
     model.scale.setScalar(cfg.scale ?? 1);
