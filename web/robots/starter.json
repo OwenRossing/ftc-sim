@@ -1,35 +1,31 @@
 {
   "_help": [
-    "The goBILDA FTC StarterBot (2026-27), from goBILDA's CAD (3200-2627-0003.step, cad/starterbot_export.py).",
-    "The GLBs are already in the robot frame: inches, +x forward, +y up (0 = floor), +z right, origin = the",
-    "middle wheels' center on the floor. 'pivot' + 'axis' is where a part spins (its center from the CAD).",
+    "The goBILDA FTC StarterBot with mecanum wheels (2026-27, 3200-2627-0004), from goBILDA's model",
+    "(cad/starterbot_glb_export.py). The GLBs are already in the robot frame: inches, +x forward, +y up",
+    "(0 = floor), +z right, origin between the wheels on the floor. 'pivot' + 'axis' is where a part spins.",
     "Drivers: spin (motor rpm x scale), crspin (a continuous servo's power x scale)."
   ],
   "parts": [
     { "name": "chassis", "file": "starterbot/chassis.glb" },
 
-    { "name": "wheelFL", "file": "starterbot/wheelFL.glb", "pivot": [5.67, 1.97, -7.81], "axis": [0, 0, 1],
-      "driver": { "type": "spin", "motor": "left_drive", "scale": -1 } },
-    { "name": "wheelML", "file": "starterbot/wheelML.glb", "pivot": [0, 1.89, -7.91], "axis": [0, 0, 1],
-      "driver": { "type": "spin", "motor": "left_drive", "scale": -1 } },
-    { "name": "wheelBL", "file": "starterbot/wheelBL.glb", "pivot": [-5.67, 1.89, -7.91], "axis": [0, 0, 1],
-      "driver": { "type": "spin", "motor": "left_drive", "scale": -1 } },
-    { "name": "wheelFR", "file": "starterbot/wheelFR.glb", "pivot": [5.67, 1.97, 7.81], "axis": [0, 0, 1],
-      "driver": { "type": "spin", "motor": "right_drive", "scale": -1 } },
-    { "name": "wheelMR", "file": "starterbot/wheelMR.glb", "pivot": [0, 1.89, 7.91], "axis": [0, 0, 1],
-      "driver": { "type": "spin", "motor": "right_drive", "scale": -1 } },
-    { "name": "wheelBR", "file": "starterbot/wheelBR.glb", "pivot": [-5.67, 1.89, 7.91], "axis": [0, 0, 1],
-      "driver": { "type": "spin", "motor": "right_drive", "scale": -1 } },
+    { "name": "wheelFL", "file": "starterbot/wheelFL.glb", "pivot": [5.2, 2.05, -8.16], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "left_front_drive", "scale": -1 } },
+    { "name": "wheelFR", "file": "starterbot/wheelFR.glb", "pivot": [5.2, 2.05, 8.15], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "right_front_drive", "scale": -1 } },
+    { "name": "wheelBL", "file": "starterbot/wheelBL.glb", "pivot": [-5.2, 2.05, -8.15], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "left_back_drive", "scale": -1 } },
+    { "name": "wheelBR", "file": "starterbot/wheelBR.glb", "pivot": [-5.2, 2.05, 8.15], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "right_back_drive", "scale": -1 } },
 
-    { "name": "gecko", "file": "starterbot/gecko.glb", "pivot": [7.36, 3.67, -0.27], "axis": [0, 0, 1],
+    { "name": "gecko", "file": "starterbot/gecko.glb", "pivot": [6.83, 3.48, 0.37], "axis": [0, 0, 1],
       "_note": "the 117 rpm intake motor drives the Gecko shaft, ratio not measured",
       "driver": { "type": "spin", "motor": "intake", "scale": -3 } },
-    { "name": "cornerL", "file": "starterbot/cornerL.glb", "pivot": [8.63, 1.82, -6.14], "axis": [0, 1, 0],
+    { "name": "cornerL", "file": "starterbot/cornerL.glb", "pivot": [8.35, 1.53, -6.14], "axis": [0, 1, 0],
       "driver": { "type": "crspin", "servo": "left_intake_servo", "scale": 1 } },
-    { "name": "cornerR", "file": "starterbot/cornerR.glb", "pivot": [8.63, 1.82, 6.14], "axis": [0, 1, 0],
+    { "name": "cornerR", "file": "starterbot/cornerR.glb", "pivot": [8.35, 1.53, 6.14], "axis": [0, 1, 0],
       "driver": { "type": "crspin", "servo": "right_intake_servo", "scale": -1 } },
-    { "name": "launcherWheel", "file": "starterbot/launcherWheel.glb", "pivot": [-1.57, 6.61, 0.02], "axis": [0, 0, 1],
+    { "name": "launcherWheel", "file": "starterbot/launcherWheel.glb", "pivot": [-2.05, 6.77, 0.2], "axis": [0, 0, 1],
       "driver": { "type": "spin", "motor": "launcher", "scale": 1 } }
   ],
-  "ballStack": { "bottom": [3.2, 5.8, -1.6], "spacing": [-1.6, 0.3, 1.05], "radius": 1.4, "color": "#ffd23f" }
+  "ballStack": { "bottom": [2.8, 5.9, -1.6], "spacing": [-1.6, 0.3, 1.05], "radius": 1.4, "color": "#ffd23f" }
 }

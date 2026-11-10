@@ -41,11 +41,13 @@ It needs the Android SDK (it reads `local.properties`, which Android Studio writ
 A robot is a `SimRobot` subclass: its hardware config, drivetrain numbers, collision outline, and a `step()` that
 makes its mechanisms do things (spin a flywheel, pick up and shoot balls). Plus a 3D model in `web/robots/`.
 
-- `StarterRobot` is built in: the goBILDA FTC StarterBot (3200-2627-0003) that the FTC Starter Kit builds, with
-  goBILDA's config names (`left_drive`, `right_drive`, `intake`, `launcher`, and the CR servos `windmill`,
-  `left_intake_servo`, `right_intake_servo`). goBILDA's own example TeleOp and Auto (MIT licensed) run on it
-  unchanged and are the answer key in `example/TeamCode`. Its model is goBILDA's CAD, converted with
-  `cad/starterbot_export.py`, into `web/models/starterbot/`.
+- `StarterRobot` is built in, goBILDA's FTC StarterBot in both versions, with goBILDA's config names. goBILDA's own
+  example code (MIT licensed) runs on them unchanged and is the answer key in `example/TeamCode`.
+  - `robot=starter`: the StarterBot with mecanum wheels (3200-2627-0004). `left_front_drive`, `right_front_drive`,
+    `left_back_drive`, `right_back_drive`, `intake`, `launcher`, and the CR servos `windmillServo`,
+    `left_intake_servo`, `right_intake_servo`. Model from goBILDA's GLB (`cad/starterbot_glb_export.py`).
+  - `robot=starter-tank`: the 6 wheel tank one the FTC Starter Kit builds (3200-2627-0003). `left_drive`,
+    `right_drive`, and the windmill is `windmill`. Model from goBILDA's STEP (`cad/starterbot_export.py`).
 - A team's own robot lives in the team repo, so its code and CAD stay there: the class in `sim-robot/java/`
   (it can read the team's constants), the model in `sim-web/robots/`, and `robot=<full class name>` in
   `sim.properties`. Files in `sim-web/` win over the sim's own `web/`.

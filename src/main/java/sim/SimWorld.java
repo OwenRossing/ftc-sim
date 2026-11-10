@@ -149,7 +149,9 @@ public final class SimWorld {
         String best = null;
         int bestDistance = Integer.MAX_VALUE;
         for (String candidate : names) {
-            int d = candidate.equalsIgnoreCase(name) ? 0 : editDistance(candidate.toLowerCase(), name.toLowerCase());
+            String a = candidate.toLowerCase(), b = name.toLowerCase();
+            // a capital off, or one is the start of the other ("windmill" for "windmillServo")
+            int d = a.equals(b) ? 0 : a.startsWith(b) || b.startsWith(a) ? 1 : editDistance(a, b);
             if (d < bestDistance) {
                 bestDistance = d;
                 best = candidate;

@@ -11,14 +11,14 @@ import org.junit.jupiter.api.Test;
  * The goBILDA StarterBot, driven by goBILDA's own example TeleOp and Auto (unchanged), plus the mistakes
  * students make. Real time: each test takes a few seconds.
  */
-class StarterBotTest {
+class StarterBotTest { // the tank version, with goBILDA's tank code
 
     private static final String TELEOP = "BioBuzz StarterBot Teleop";
     private static final String AUTO = "StarterBotAuto";
 
     @Test
     void goBildasOpModesAreListed() {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             assertTrue(sim.engine.opModes().containsKey(TELEOP), "OpModes: " + sim.engine.opModes());
             assertTrue(sim.engine.opModes().containsKey(AUTO), "OpModes: " + sim.engine.opModes());
         }
@@ -26,7 +26,7 @@ class StarterBotTest {
 
     @Test
     void drivesStraightForward() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             sim.physics.placeRobot(15, 30, 0); // open floor all the way to x 90
             sim.init(TELEOP).start();
             double startX = sim.physics.x;
@@ -43,7 +43,7 @@ class StarterBotTest {
 
     @Test
     void turnsButCantStrafe() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             sim.physics.placeRobot(40, 30, 0);
             sim.init(TELEOP).start();
             sim.hold("lx", -1.0); // a tank drive ignores this
@@ -59,7 +59,7 @@ class StarterBotTest {
 
     @Test
     void withoutReversingTheRightSideItSpins() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             sim.physics.placeRobot(40, 30, 0);
             String name = sim.engine.addOpMode(MistakeOpModes.NoReverse.class);
             sim.init(name).start();
@@ -74,7 +74,7 @@ class StarterBotTest {
 
     @Test
     void intakesABallThenLaunchesAllFour() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             sim.physics.placeRobot(40, 30, 0);
             sim.physics.emptyRobot();
             sim.physics.spawnBall(SimCollisions.POLLEN, sim.physics.x + 12, sim.physics.y, 1.4); // touching the intake
@@ -93,7 +93,7 @@ class StarterBotTest {
 
     @Test
     void launcherHoldsGoBildasVelocity() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             sim.init(TELEOP).start();
             sim.physics.emptyRobot(); // so nothing gets fed and slows it down
             sim.hold("rb", true);
@@ -105,7 +105,7 @@ class StarterBotTest {
 
     @Test
     void goBildasAutoScoresThenBacksUp() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             int before = sim.physics.collisions.redHive.inCell;
             sim.init(AUTO).start();
             assertTrue(sim.waitUntil(() -> sim.physics.balls == 0, 8), "still holding " + sim.physics.balls);
@@ -121,7 +121,7 @@ class StarterBotTest {
 
     @Test
     void launchingWithoutSpinningUpWarns() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.NoSpinUp.class);
             sim.init(name).start();
             assertTrue(sim.waitForWarning("before it was up to speed", 2), "warnings: " + sim.world.warnings());
@@ -130,7 +130,7 @@ class StarterBotTest {
 
     @Test
     void typoInADeviceNameCrashesWithAHint() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.Typo.class);
             sim.engine.initOpMode(name);
             assertTrue(sim.waitUntil(() -> sim.engine.error() != null, 2), "didn't crash");
@@ -142,7 +142,7 @@ class StarterBotTest {
 
     @Test
     void forgettingHardwareMapExplainsTheNull() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.NeverGotMotor.class);
             sim.init(name);
             sim.engine.startOpMode();
@@ -153,7 +153,7 @@ class StarterBotTest {
 
     @Test
     void whileLoopInsideLoopIsCalledOut() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.WhileInLoop.class);
             sim.init(name).start();
             assertTrue(sim.waitForWarning("stuck inside loop()", SimEngine.STUCK_SEC + 2), "warnings: " + sim.world.warnings());
@@ -164,7 +164,7 @@ class StarterBotTest {
 
     @Test
     void anOpModeThatIgnoresStopIsCalledOutAndCut() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.IgnoresStop.class);
             sim.init(name).start();
             assertTrue(sim.waitUntil(() -> sim.world.motorState("intake").power == 1, 1));
@@ -177,7 +177,7 @@ class StarterBotTest {
 
     @Test
     void movingInInitIsAPenalty() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.MovesInInit.class);
             sim.init(name);
             assertTrue(sim.waitForWarning("during INIT", 1), "warnings: " + sim.world.warnings());
@@ -187,7 +187,7 @@ class StarterBotTest {
 
     @Test
     void oldStyleHardwareMapWorks() throws Exception {
-        try (SimHarness sim = new SimHarness()) {
+        try (SimHarness sim = new SimHarness(new StarterRobot(false))) {
             String name = sim.engine.addOpMode(MistakeOpModes.OldStyle.class);
             assertNotNull(name);
             sim.init(name).start();

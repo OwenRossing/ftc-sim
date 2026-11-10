@@ -212,12 +212,13 @@ public abstract class SimRobot {
      * Loads a robot by its sim.properties name: "starter", or a full class name with a no-argument constructor
      */
     public static SimRobot load(String name) {
-        if (name == null || name.isEmpty() || name.equals("starter")) return new StarterRobot();
+        if (name == null || name.isEmpty() || name.equals("starter")) return new StarterRobot(true);
+        if (name.equals("starter-tank")) return new StarterRobot(false);
         try {
             return (SimRobot) Class.forName(name).getDeclaredConstructor().newInstance();
         } catch (ReflectiveOperationException | ClassCastException e) {
             throw new IllegalArgumentException("Can't load the sim robot \"" + name
-                    + "\". Use robot=starter or the full name of a class that extends sim.SimRobot", e);
+                    + "\". Use robot=starter, robot=starter-tank or the full name of a class that extends sim.SimRobot", e);
         }
     }
 }

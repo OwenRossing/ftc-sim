@@ -1,0 +1,35 @@
+{
+  "_help": [
+    "The goBILDA FTC StarterBot (2026-27), from goBILDA's CAD (3200-2627-0003.step, cad/starterbot_export.py).",
+    "The GLBs are already in the robot frame: inches, +x forward, +y up (0 = floor), +z right, origin = the",
+    "middle wheels' center on the floor. 'pivot' + 'axis' is where a part spins (its center from the CAD).",
+    "Drivers: spin (motor rpm x scale), crspin (a continuous servo's power x scale)."
+  ],
+  "parts": [
+    { "name": "chassis", "file": "starterbot-tank/chassis.glb" },
+
+    { "name": "wheelFL", "file": "starterbot-tank/wheelFL.glb", "pivot": [5.67, 1.97, -7.81], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "left_drive", "scale": -1 } },
+    { "name": "wheelML", "file": "starterbot-tank/wheelML.glb", "pivot": [0, 1.89, -7.91], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "left_drive", "scale": -1 } },
+    { "name": "wheelBL", "file": "starterbot-tank/wheelBL.glb", "pivot": [-5.67, 1.89, -7.91], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "left_drive", "scale": -1 } },
+    { "name": "wheelFR", "file": "starterbot-tank/wheelFR.glb", "pivot": [5.67, 1.97, 7.81], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "right_drive", "scale": -1 } },
+    { "name": "wheelMR", "file": "starterbot-tank/wheelMR.glb", "pivot": [0, 1.89, 7.91], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "right_drive", "scale": -1 } },
+    { "name": "wheelBR", "file": "starterbot-tank/wheelBR.glb", "pivot": [-5.67, 1.89, 7.91], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "right_drive", "scale": -1 } },
+
+    { "name": "gecko", "file": "starterbot-tank/gecko.glb", "pivot": [7.36, 3.67, -0.27], "axis": [0, 0, 1],
+      "_note": "the 117 rpm intake motor drives the Gecko shaft, ratio not measured",
+      "driver": { "type": "spin", "motor": "intake", "scale": -3 } },
+    { "name": "cornerL", "file": "starterbot-tank/cornerL.glb", "pivot": [8.63, 1.82, -6.14], "axis": [0, 1, 0],
+      "driver": { "type": "crspin", "servo": "left_intake_servo", "scale": 1 } },
+    { "name": "cornerR", "file": "starterbot-tank/cornerR.glb", "pivot": [8.63, 1.82, 6.14], "axis": [0, 1, 0],
+      "driver": { "type": "crspin", "servo": "right_intake_servo", "scale": -1 } },
+    { "name": "launcherWheel", "file": "starterbot-tank/launcherWheel.glb", "pivot": [-1.57, 6.61, 0.02], "axis": [0, 0, 1],
+      "driver": { "type": "spin", "motor": "launcher", "scale": 1 } }
+  ],
+  "ballStack": { "bottom": [3.2, 5.8, -1.6], "spacing": [-1.6, 0.3, 1.05], "radius": 1.4, "color": "#ffd23f" }
+}

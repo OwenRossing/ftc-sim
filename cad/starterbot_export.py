@@ -53,6 +53,8 @@ def classify(row, center):
 table = json.load(open(tree_path, encoding="utf-8"))
 data = np.load(mesh_path, allow_pickle=True)
 proto_verts, proto_faces = data["verts"], data["faces"]
+# per triangle face colors, -1 where a face has none (older caches don't have them)
+proto_colors = data["colors"] if "colors" in data.files else None
 
 groups = collections.defaultdict(lambda: collections.defaultdict(lambda: ([], [])))
 for row in table:
@@ -65,11 +67,25 @@ for row in table:
     group = classify(row, center)
     if group is None:
         continue
-    color = tuple(row["color"] or (150, 155, 165))
-    vs, fs = groups[group][color]
-    offset = sum(len(v) for v in vs)
-    vs.append(robot)
-    fs.append(proto_faces[row["proto"]] + offset)
+    part_color = tuple(row["color"] or (150, 155, 165))
+    faces = proto_faces[row["proto"]]
+    tri_colors = proto_colors[row["proto"]] if proto_colors is not None else None
+    if tri_colors is None or len(tri_colors) != len(faces):
+        tri_colors = np.full((len(faces), 3), -1, dtype=np.int16)
+    # a face's own color wins over the part's (black tread on a grey hub, a label on a motor)
+    keys = [tuple(c) if c[0] >= 0 else part_color for c in tri_colors.tolist()]
+    by_color = collections.defaultdict(list)
+    for i, k in enumerate(keys):
+        by_color[k].append(i)
+    for color, idx in by_color.items():
+        vs, fs = groups[group][color]
+        offset = sum(len(v) for v in vs)
+        sub = faces[idx]
+        used = np.unique(sub)  # only the vertices these triangles use
+        remap = np.full(len(robot), -1, dtype=np.int64)
+        remap[used] = np.arange(len(used))
+        vs.append(robot[used])
+        fs.append(remap[sub] + offset)
 
 # triangles to keep per group: the chassis is where the detail is, a wheel is round from far away
 BUDGET = {"chassis": 90000, "wheel": 2500, "gecko": 6000, "corner": 1500, "launcherWheel": 3000}
